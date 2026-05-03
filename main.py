@@ -9,15 +9,16 @@ soup = bs4.BeautifulSoup(html, 'html.parser')
 table_data = soup.find('table', {'class': 'infobox ib-settlement vcard'})
 clean_table_data = table_data.get_text(separator="\n", strip=True)
 
-clean_temp_data = ""
-all_tables = soup.find_all('table', class_ = 'Wikitable')
-for table in all_tables:
-    if "Climate" in table.text or "climate" in table.text:
-        temp_table = table
-        clean_temp_data = temp_table.get_text(separator="\n", strip=True)
+
+tables = soup.find_all('table', class_='wikitable')
+
+climate_table = None
+for table in tables:
+    if 'Climate data' in table.text or 'ultraviolet index' in table.text:
+        climate_table = table
         break
 
-
+clean_climate_table = climate_table.get_text(separator="\n", strip=True)
 def get_city_name():
     city_name_pattern = r".+"
     city_name_match = re.search(city_name_pattern, clean_table_data).group(0)
@@ -25,8 +26,11 @@ def get_city_name():
 
 def get_municipality_population():
     municipality_population_pattern = r"Population[\s\S]*?(\d+,[\d+,]+)"
-    municipality_population_match = re.search(municipality_population_pattern, clean_table_data).group(1)
-    return municipality_population_match
+    municipality_population_match = re.search(municipality_population_pattern, clean_table_data)
+    if municipality_population_match == None:
+        municipality_population_match = "-"
+        return municipality_population_match
+    return municipality_population_match.group(1)
 
 def get_urban_population():
     urban_population_pattern = r"Population[\s\S]*?Urban[\s\S]*?(\d+,[\d+,]+)"
@@ -46,8 +50,11 @@ def get_metro_population():
 
 def get_municipality_area():
     municipality_area_pattern = r"Area[\s\S]*?(\d+[\d+,.]+\s*km)"
-    municipality_area_match = re.search(municipality_area_pattern, clean_table_data).group(1)
-    return municipality_area_match
+    municipality_area_match = re.search(municipality_area_pattern, clean_table_data)
+    if municipality_area_match == None:
+        municipality_area_match = "-"
+        return municipality_area_match
+    return municipality_area_match.group(1)
 
 def get_urban_area():
     urban_area_pattern = r"Area[\s\S]*?Urban[\s\S]*?(\d+[\d+,.]+\s*km)"
@@ -72,8 +79,11 @@ def get_country():
 
 def get_elevation():
     elev_pattern = r"Elevation|elevation[\s\S]*?([\d]+)\s*m"
-    elev_match = re.search(elev_pattern, clean_table_data).group(1)
-    return elev_match
+    elev_match = re.search(elev_pattern, clean_table_data)
+    if elev_match and elev_match.group(1):
+        return elev_match.group(1) + "m"
+    else:
+        return "-"
 
 def get_coords():
     coords_pattern = r"Coordinates[\s\S]*?([\d\.\"°′″NESW \n]+)"
@@ -89,6 +99,21 @@ def get_timezone():
         stimezone_match = "-"
     return timezone_match + "\n     Summer: " + stimezone_match.group(1)
 
+def get_climate():
+    climate_max_pattern = r"Record high(?:[^\d−]+[−]?\d+[\.,]?\d*){24}[^\d−]+([−]?\d+[\.,]?\d*)"
+    climate_mean_pattern = r"Daily mean(?:[^\d−]+[−]?\d+[\.,]?\d*){24}[^\d−]+([−]?\d+[\.,]?\d*)"
+    climate_min_pattern = r"Record low(?:[^\d−]+[−]?\d+[\.,]?\d*){24}[^\d−]+([−]?\d+[\.,]?\d*)"
+    climate_max_match = re.search(climate_max_pattern, clean_climate_table)
+    climate_mean_match = re.search(climate_mean_pattern, clean_climate_table)
+    climate_min_match = re.search(climate_min_pattern, clean_climate_table)
+    max_temp = climate_max_match.group(1) if climate_max_match else "-"
+    mean_temp = climate_mean_match.group(1) if climate_mean_match else "-"
+    min_temp = climate_min_match.group(1) if climate_min_match else "-"
+
+    return ("\n    Maximum Temperature: " + max_temp +
+            "\n    Mean Temperature: " + mean_temp +
+            "\n    Minimum Temperature: " + min_temp)
+
 print("Name: " + get_city_name())
 print("Population: " + get_municipality_population())
 print("     Urban: " + get_urban_population())
@@ -98,7 +123,7 @@ print("     Urban: " + get_urban_area())
 print("     Metro: " + get_metro_area())
 print("Country: " + get_country())
 print("Coordinates:" + get_coords().replace("\n", " "))
-print("Elevation: " + get_elevation() + "m")
+print("Elevation: " + get_elevation())
 print("Timezone: " + get_timezone())
 
-print(clean_temp_data)
+print("Climate(Yearly): " + get_climate())
